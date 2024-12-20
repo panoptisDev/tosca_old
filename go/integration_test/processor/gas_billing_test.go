@@ -19,6 +19,7 @@ import (
 	op "github.com/ethereum/go-ethereum/core/vm"
 	"go.uber.org/mock/gomock"
 
+	_ "github.com/Fantom-foundation/Tosca/go/processor/geth"
 	_ "github.com/Fantom-foundation/Tosca/go/processor/opera" // < registers opera processor for testing
 )
 

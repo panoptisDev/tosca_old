@@ -23,6 +23,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	_ "github.com/Fantom-foundation/Tosca/go/processor/floria" // < registers floria processor for testing
+	_ "github.com/Fantom-foundation/Tosca/go/processor/geth"   // < registers geth processor for testing
 	_ "github.com/Fantom-foundation/Tosca/go/processor/opera"  // < registers opera processor for testing
 
 	_ "github.com/Fantom-foundation/Tosca/go/interpreter/evmzero" // < registers evmzero interpreter for testing
