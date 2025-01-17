@@ -19,7 +19,7 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/0xsoniclabs/tosca/go/tosca"
+	"github.com/Fantom-foundation/Tosca/go/tosca"
 	"golang.org/x/crypto/sha3"
 )
 

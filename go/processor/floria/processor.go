@@ -13,7 +13,7 @@ package floria
 import (
 	"fmt"
 
-	"github.com/0xsoniclabs/tosca/go/tosca"
+	"github.com/Fantom-foundation/Tosca/go/tosca"
 )
 
 const (

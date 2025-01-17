@@ -14,7 +14,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/0xsoniclabs/tosca/go/tosca"
+	"github.com/Fantom-foundation/Tosca/go/tosca"
 )
 
 func TestGetPropertyTestValues_ExtractsTestValuesFromConstraints(t *testing.T) {

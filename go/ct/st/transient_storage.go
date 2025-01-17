@@ -11,7 +11,7 @@
 package st
 
 import (
-	. "github.com/0xsoniclabs/tosca/go/ct/common"
+	. "github.com/Fantom-foundation/Tosca/go/ct/common"
 	"golang.org/x/exp/maps"
 )
 

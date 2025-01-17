@@ -18,7 +18,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/0xsoniclabs/tosca/go/tosca"
+	"github.com/Fantom-foundation/Tosca/go/tosca"
 	"github.com/holiman/uint256"
 	"go.uber.org/mock/gomock"
 )

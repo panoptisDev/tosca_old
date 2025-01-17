@@ -14,8 +14,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/0xsoniclabs/tosca/go/tosca"
-	"github.com/0xsoniclabs/tosca/go/tosca/vm"
+	"github.com/Fantom-foundation/Tosca/go/tosca"
+	"github.com/Fantom-foundation/Tosca/go/tosca/vm"
 	"go.uber.org/mock/gomock"
 )
 

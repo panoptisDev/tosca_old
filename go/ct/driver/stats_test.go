@@ -14,8 +14,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/0xsoniclabs/tosca/go/ct/rlz"
-	"github.com/0xsoniclabs/tosca/go/ct/spc"
+	"github.com/Fantom-foundation/Tosca/go/ct/rlz"
+	"github.com/Fantom-foundation/Tosca/go/ct/spc"
 	"go.uber.org/mock/gomock"
 )
 

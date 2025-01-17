@@ -15,7 +15,7 @@ import (
 	"sort"
 	"strings"
 
-	. "github.com/0xsoniclabs/tosca/go/ct/common"
+	. "github.com/Fantom-foundation/Tosca/go/ct/common"
 )
 
 // Variable is a placeholder for the generation process that will be mapped to a

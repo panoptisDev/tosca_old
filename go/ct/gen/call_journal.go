@@ -11,9 +11,9 @@
 package gen
 
 import (
-	"github.com/0xsoniclabs/tosca/go/ct/common"
-	"github.com/0xsoniclabs/tosca/go/ct/st"
-	"github.com/0xsoniclabs/tosca/go/tosca"
+	"github.com/Fantom-foundation/Tosca/go/ct/common"
+	"github.com/Fantom-foundation/Tosca/go/ct/st"
+	"github.com/Fantom-foundation/Tosca/go/tosca"
 	"pgregory.net/rand"
 )
 

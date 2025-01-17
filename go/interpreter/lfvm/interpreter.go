@@ -13,7 +13,7 @@ package lfvm
 import (
 	"fmt"
 
-	"github.com/0xsoniclabs/tosca/go/tosca"
+	"github.com/Fantom-foundation/Tosca/go/tosca"
 )
 
 //go:generate mockgen -source interpreter.go -destination interpreter_mock.go -package lfvm

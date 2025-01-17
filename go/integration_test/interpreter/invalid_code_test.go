@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/0xsoniclabs/tosca/go/tosca/vm"
+	"github.com/Fantom-foundation/Tosca/go/tosca/vm"
 )
 
 func TestEmptyCodeShouldBeIgnored(t *testing.T) {

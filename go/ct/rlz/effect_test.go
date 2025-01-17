@@ -13,7 +13,7 @@ package rlz
 import (
 	"testing"
 
-	"github.com/0xsoniclabs/tosca/go/ct/st"
+	"github.com/Fantom-foundation/Tosca/go/ct/st"
 )
 
 func TestEffect_Change(t *testing.T) {

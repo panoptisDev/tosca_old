@@ -16,7 +16,7 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	. "github.com/0xsoniclabs/tosca/go/ct/common"
+	. "github.com/Fantom-foundation/Tosca/go/ct/common"
 )
 
 const MaxStackSize = 1024

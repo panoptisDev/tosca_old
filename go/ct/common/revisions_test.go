@@ -14,7 +14,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/0xsoniclabs/tosca/go/tosca"
+	"github.com/Fantom-foundation/Tosca/go/tosca"
 )
 
 func TestRevisions_RangeLength(t *testing.T) {

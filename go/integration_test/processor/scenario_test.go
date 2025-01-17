@@ -16,8 +16,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/0xsoniclabs/tosca/go/integration_test"
-	"github.com/0xsoniclabs/tosca/go/tosca"
+	"github.com/Fantom-foundation/Tosca/go/integration_test"
+	"github.com/Fantom-foundation/Tosca/go/tosca"
 )
 
 func TestScenarioContext_AccountsAreImplictilyCreated(t *testing.T) {

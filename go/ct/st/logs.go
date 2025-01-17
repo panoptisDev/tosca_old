@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"slices"
 
-	. "github.com/0xsoniclabs/tosca/go/ct/common"
+	. "github.com/Fantom-foundation/Tosca/go/ct/common"
 )
 
 type Logs struct {

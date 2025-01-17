@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/0xsoniclabs/tosca/go/tosca"
+	"github.com/Fantom-foundation/Tosca/go/tosca"
 )
 
 // TransactionContext holds all transaction data

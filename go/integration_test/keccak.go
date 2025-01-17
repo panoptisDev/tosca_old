@@ -11,7 +11,7 @@
 package integration_test
 
 import (
-	"github.com/0xsoniclabs/tosca/go/tosca"
+	"github.com/Fantom-foundation/Tosca/go/tosca"
 	"golang.org/x/crypto/sha3"
 )
 

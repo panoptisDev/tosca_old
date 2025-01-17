@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/0xsoniclabs/tosca/go/ct/common"
+	. "github.com/Fantom-foundation/Tosca/go/ct/common"
 )
 
 func TestBlockContext_Diff(t *testing.T) {
