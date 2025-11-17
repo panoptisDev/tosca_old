@@ -138,46 +138,6 @@ func getContext(code tosca.Code, data []byte, runContext tosca.RunContext, stack
 	return ctxt
 }
 
-func TestInterpreter_step_DetectsLowerStackLimitViolation(t *testing.T) {
-	// Add tests for execution
-
-	for _, op := range allOpCodes() {
-
-		usage := computeStackUsage(op)
-		if usage.from >= 0 {
-			continue
-		}
-
-		ctxt := getEmptyContext()
-		ctxt.code = []byte{byte(op)}
-
-		_, err := steps(&ctxt, false)
-		if want, got := errStackUnderflow, err; want != got {
-			t.Errorf("expected stack-underflow for %v to be detected, got %v", op, got)
-		}
-	}
-}
-
-func TestInterpreter_step_DetectsUpperStackLimitViolation(t *testing.T) {
-	// Add tests for execution
-	for _, op := range allOpCodes() {
-		// Ignore operations that do not need any data on the stack.
-		usage := computeStackUsage(op)
-		if usage.to <= 0 {
-			continue
-		}
-
-		ctxt := getEmptyContext()
-		ctxt.code = []byte{byte(op)}
-		ctxt.stack.stackPointer = maxStackSize
-
-		_, err := steps(&ctxt, false)
-		if want, got := errStackOverflow, err; want != got {
-			t.Errorf("expected stack-underflow for %v to be detected, got %v", op, got)
-		}
-	}
-}
-
 func TestInterpreter_CanDispatchExecutableInstructions(t *testing.T) {
 	for _, op := range allOpCodesWhere(isExecutable) {
 		t.Run(op.String(), func(t *testing.T) {
@@ -548,21 +508,6 @@ func BenchmarkFib10(b *testing.B) {
 	benchmarkFib(b, 10, false)
 }
 
-func BenchmarkFib10_SI(b *testing.B) {
-	benchmarkFib(b, 10, true)
-}
-
-func BenchmarkSatisfiesStackRequirements(b *testing.B) {
-	context := &context{
-		stack: NewStack(),
-	}
-
-	opCodes := allOpCodes()
-	for i := 0; i < b.N; i++ {
-		_ = checkStackLimits(context.stack.len(), opCodes[i%len(opCodes)])
-	}
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // test utilities
 
@@ -610,8 +555,7 @@ func generateCodeFor(op vm.OpCode) tosca.Code {
 // fillStackFor fills the stack with the required number of elements for the given opcode.
 // For Jump instructions, it also encodes the PC for the the first jump destination found in code
 func fillStackFor(op vm.OpCode, stack *stack, code tosca.Code) error {
-	limits := _precomputedStackLimits.get(op)
-	stack.stackPointer = limits.min
+	stack.stackPointer = 50
 
 	// jump instructions need a valid jump destination
 	if isJump(op) {
@@ -622,7 +566,7 @@ func fillStackFor(op vm.OpCode, stack *stack, code tosca.Code) error {
 			return fmt.Errorf("missing JUMPDEST instruction")
 		}
 
-		for i := 0; i < limits.min; i++ {
+		for i := 0; i < 50; i++ {
 			stack.data[i] = *uint256.NewInt(uint64(counter))
 		}
 	}

@@ -18,11 +18,40 @@ import (
 	"github.com/holiman/uint256"
 )
 
+// stackLimits defines the stack usage of a single OpCode.
+type stackLimits struct {
+	min int // The minimum stack size required by an OpCode.
+	max int // The maximum stack size allowed before running an OpCode.
+}
+
+func stackUsageToLimits(pops, pushes int) stackLimits {
+	delta := pushes - pops
+	to := max(delta, 0)
+
+	return stackLimits{min: pops, max: maxStackSize - to}
+}
+
+func checkStackUsage(stackLen int, limits stackLimits) error {
+	if stackLen < limits.min {
+		return errStackUnderflow
+	}
+	if stackLen > limits.max {
+		return errStackOverflow
+	}
+
+	return nil
+}
+
 func opStop() status {
 	return statusStopped
 }
 
 func opEndWithResult(c *context) error {
+	stackLimits := stackUsageToLimits(2, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	offset := c.stack.pop()
 	size := c.stack.pop()
 	var err error
@@ -30,8 +59,14 @@ func opEndWithResult(c *context) error {
 	return err
 }
 
-func opPc(c *context) {
+func opPc(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	c.stack.pushUndefined().SetUint64(uint64(c.pc))
+	return nil
 }
 
 func checkJumpDest(c *context) error {
@@ -42,6 +77,11 @@ func checkJumpDest(c *context) error {
 }
 
 func opJump(c *context) error {
+	stackLimits := stackUsageToLimits(1, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	destination := c.stack.pop()
 	// overflow check
 	if !destination.IsUint64() || destination.Uint64() > math.MaxInt32 {
@@ -53,6 +93,11 @@ func opJump(c *context) error {
 }
 
 func opJumpi(c *context) error {
+	stackLimits := stackUsageToLimits(2, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	destination := c.stack.pop()
 	condition := c.stack.pop()
 	if !condition.IsZero() {
@@ -67,16 +112,26 @@ func opJumpi(c *context) error {
 	return nil
 }
 
-func opPop(c *context) {
+func opPop(c *context) error {
+	stackLimits := stackUsageToLimits(1, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
 	c.stack.pop()
+	return nil
 }
 
-func opPush(c *context, n int) {
+func opPush(c *context, n int) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	z := c.stack.pushUndefined()
 	z[3], z[2], z[1], z[0] = 0, 0, 0, 0
 	if len(c.code) <= int(c.pc)+n {
 		c.pc += int32(n)
-		return
+		return nil
 	}
 
 	// check how many uint64 (8 bytes) will be filled
@@ -99,9 +154,16 @@ func opPush(c *context, n int) {
 		}
 	}
 	c.pc += int32(n)
+
+	return nil
 }
 
 func opPush0(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	if !c.isAtLeast(tosca.R12_Shanghai) {
 		return errInvalidRevision
 	}
@@ -110,7 +172,12 @@ func opPush0(c *context) error {
 	return nil
 }
 
-func opPush1(c *context) {
+func opPush1(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	z := c.stack.pushUndefined()
 	z[3], z[2], z[1] = 0, 0, 0
 	if len(c.code) <= int(c.pc)+1 {
@@ -119,9 +186,16 @@ func opPush1(c *context) {
 		z[0] = uint64(c.code[c.pc+1])
 	}
 	c.pc += 1
+
+	return nil
 }
 
-func opPush2(c *context) {
+func opPush2(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	z := c.stack.pushUndefined()
 	z[3], z[2], z[1] = 0, 0, 0
 	if len(c.code) <= int(c.pc)+2 {
@@ -130,9 +204,16 @@ func opPush2(c *context) {
 		z[0] = uint64(c.code[c.pc+1])<<8 | uint64(c.code[c.pc+2])
 	}
 	c.pc += 2
+
+	return nil
 }
 
-func opPush3(c *context) {
+func opPush3(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	z := c.stack.pushUndefined()
 	z[3], z[2], z[1] = 0, 0, 0
 	if len(c.code) <= int(c.pc)+3 {
@@ -141,9 +222,16 @@ func opPush3(c *context) {
 		z[0] = uint64(c.code[c.pc+1])<<16 | uint64(c.code[c.pc+2])<<8 | uint64(c.code[c.pc+3])
 	}
 	c.pc += 3
+
+	return nil
 }
 
-func opPush4(c *context) {
+func opPush4(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	z := c.stack.pushUndefined()
 	z[3], z[2], z[1] = 0, 0, 0
 	if len(c.code) <= int(c.pc)+4 {
@@ -152,9 +240,16 @@ func opPush4(c *context) {
 		z[0] = uint64(c.code[c.pc+1])<<24 | uint64(c.code[c.pc+2])<<16 | uint64(c.code[c.pc+3])<<8 | uint64(c.code[c.pc+4])
 	}
 	c.pc += 4
+
+	return nil
 }
 
-func opPush32(c *context) {
+func opPush32(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	z := c.stack.pushUndefined()
 	if len(c.code) <= int(c.pc)+32 {
 		z[3], z[2], z[1], z[0] = 0, 0, 0, 0
@@ -169,17 +264,36 @@ func opPush32(c *context) {
 			uint64(c.code[c.pc+29])<<24 | uint64(c.code[c.pc+30])<<16 | uint64(c.code[c.pc+31])<<8 | uint64(c.code[c.pc+32])
 	}
 	c.pc += 32
+
+	return nil
 }
 
-func opDup(c *context, pos int) {
+func opDup(c *context, pos int) error {
+	stackLimits := stackUsageToLimits(pos, pos+1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	c.stack.dup(pos - 1)
+	return nil
 }
 
-func opSwap(c *context, pos int) {
+func opSwap(c *context, pos int) error {
+	stackLimits := stackUsageToLimits(pos+1, pos+1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	c.stack.swap(pos)
+	return nil
 }
 
 func opMstore(c *context) error {
+	stackLimits := stackUsageToLimits(2, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	var addr = c.stack.pop()
 	var value = c.stack.pop()
 	v := value.Bytes32()
@@ -187,12 +301,21 @@ func opMstore(c *context) error {
 }
 
 func opMstore8(c *context) error {
+	stackLimits := stackUsageToLimits(2, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	var addr = c.stack.pop()
 	var value = c.stack.pop()
 	return c.memory.set(addr, []byte{byte(value.Uint64())}, c)
 }
 
 func opMcopy(c *context) error {
+	stackLimits := stackUsageToLimits(3, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
 
 	if !c.isAtLeast(tosca.R13_Cancun) {
 		return errInvalidRevision
@@ -221,15 +344,30 @@ func opMcopy(c *context) error {
 }
 
 func opMload(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	var addr = c.stack.peek()
 	return c.memory.readWord(addr, addr, c)
 }
 
-func opMsize(c *context) {
+func opMsize(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	c.stack.pushUndefined().SetUint64(uint64(c.memory.length()))
+	return nil
 }
 
 func opSstore(c *context) error {
+	stackLimits := stackUsageToLimits(2, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
 
 	// SStore is a write instruction, it shall not be executed in static mode.
 	if c.params.Static {
@@ -262,6 +400,11 @@ func opSstore(c *context) error {
 }
 
 func opSload(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	var top = c.stack.peek()
 
 	addr := c.params.Recipient
@@ -282,6 +425,10 @@ func opSload(c *context) error {
 }
 
 func opTstore(c *context) error {
+	stackLimits := stackUsageToLimits(2, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
 
 	if !c.isAtLeast(tosca.R13_Cancun) {
 		return errInvalidRevision
@@ -301,6 +448,11 @@ func opTstore(c *context) error {
 }
 
 func opTload(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	if !c.isAtLeast(tosca.R13_Cancun) {
 		return errInvalidRevision
 	}
@@ -312,26 +464,55 @@ func opTload(c *context) error {
 	return nil
 }
 
-func opCaller(c *context) {
+func opCaller(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	c.stack.pushUndefined().SetBytes20(c.params.Sender[:])
+	return nil
 }
 
-func opCallvalue(c *context) {
+func opCallvalue(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	c.stack.pushUndefined().SetBytes32(c.params.Value[:])
+	return nil
 }
 
-func opCallDatasize(c *context) {
+func opCallDatasize(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	size := len(c.params.Input)
 	c.stack.pushUndefined().SetUint64(uint64(size))
+	return nil
 }
 
-func opCallDataload(c *context) {
+func opCallDataload(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	top := c.stack.peek()
 	value := getData(c.params.Input, top, 32)
 	top.SetBytes(value)
+	return nil
 }
 
 func genericDataCopy(c *context, source []byte) error {
+	stackLimits := stackUsageToLimits(3, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	var (
 		memOffset  = c.stack.pop()
 		dataOffset = c.stack.pop()
@@ -355,38 +536,74 @@ func genericDataCopy(c *context, source []byte) error {
 	return nil
 }
 
-func opAnd(c *context) {
+func opAnd(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	b.And(a, b)
+	return nil
 }
 
-func opOr(c *context) {
+func opOr(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	b.Or(a, b)
+	return nil
 }
 
-func opNot(c *context) {
+func opNot(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.peek()
 	a.Not(a)
+	return nil
 }
-func opXor(c *context) {
+
+func opXor(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	b.Xor(a, b)
+	return nil
 }
 
-func opIszero(c *context) {
+func opIszero(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	top := c.stack.peek()
 	if top.IsZero() {
 		top.SetOne()
 	} else {
 		top.Clear()
 	}
+	return nil
 }
 
-func opEq(c *context) {
+func opEq(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	res := a.Cmp(b)
@@ -398,9 +615,15 @@ func opEq(c *context) {
 	} else {
 		b[0] = 0
 	}
+	return nil
 }
 
-func opLt(c *context) {
+func opLt(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	if a.Lt(b) {
@@ -408,9 +631,15 @@ func opLt(c *context) {
 	} else {
 		b.Clear()
 	}
+	return nil
 }
 
-func opGt(c *context) {
+func opGt(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	if a.Gt(b) {
@@ -418,9 +647,15 @@ func opGt(c *context) {
 	} else {
 		b.Clear()
 	}
+	return nil
 }
 
-func opSlt(c *context) {
+func opSlt(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	if a.Slt(b) {
@@ -428,9 +663,15 @@ func opSlt(c *context) {
 	} else {
 		b.Clear()
 	}
+	return nil
 }
 
-func opSgt(c *context) {
+func opSgt(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	if a.Sgt(b) {
@@ -438,9 +679,15 @@ func opSgt(c *context) {
 	} else {
 		b.Clear()
 	}
+	return nil
 }
 
-func opShr(c *context) {
+func opShr(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	if a.LtUint64(256) {
@@ -448,9 +695,16 @@ func opShr(c *context) {
 	} else {
 		b.Clear()
 	}
+
+	return nil
 }
 
-func opShl(c *context) {
+func opShl(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	if a.LtUint64(256) {
@@ -458,9 +712,15 @@ func opShl(c *context) {
 	} else {
 		b.Clear()
 	}
+	return nil
 }
 
-func opSar(c *context) {
+func opSar(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	if a.GtUint64(256) {
@@ -469,12 +729,18 @@ func opSar(c *context) {
 		} else {
 			b.SetAllOne()
 		}
-		return
+		return nil
 	}
 	b.SRsh(b, uint(a.Uint64()))
+	return nil
 }
 
 func opClz(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	if !c.isAtLeast(tosca.R15_Osaka) {
 		return errInvalidRevision
 	}
@@ -483,73 +749,144 @@ func opClz(c *context) error {
 	return nil
 }
 
-func opSignExtend(c *context) {
+func opSignExtend(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	back, num := c.stack.pop(), c.stack.peek()
 	num.ExtendSign(num, back)
+	return nil
 }
 
-func opByte(c *context) {
+func opByte(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	th, val := c.stack.pop(), c.stack.peek()
 	val.Byte(th)
+	return nil
 }
 
-func opAdd(c *context) {
+func opAdd(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	b.Add(a, b)
+	return nil
 }
 
-func opSub(c *context) {
+func opSub(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	b.Sub(a, b)
+	return nil
 }
 
-func opMul(c *context) {
+func opMul(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	b.Mul(a, b)
+	return nil
 }
 
-func opMulMod(c *context) {
+func opMulMod(c *context) error {
+	stackLimits := stackUsageToLimits(3, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.pop()
 	n := c.stack.peek()
 	n.MulMod(a, b, n)
+	return nil
 }
 
-func opDiv(c *context) {
+func opDiv(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	b.Div(a, b)
+	return nil
 }
 
-func opSDiv(c *context) {
+func opSDiv(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	b.SDiv(a, b)
+	return nil
 }
 
-func opMod(c *context) {
+func opMod(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	b.Mod(a, b)
+	return nil
 }
 
-func opAddMod(c *context) {
+func opAddMod(c *context) error {
+	stackLimits := stackUsageToLimits(3, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.pop()
 	n := c.stack.peek()
 	n.AddMod(a, b, n)
+	return nil
 }
 
-func opSMod(c *context) {
+func opSMod(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	a := c.stack.pop()
 	b := c.stack.peek()
 	b.SMod(a, b)
+	return nil
 }
 
 func opExp(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	base, exponent := c.stack.pop(), c.stack.peek()
 	if err := c.useGas(tosca.Gas(50 * exponent.ByteLen())); err != nil {
 		return err
@@ -562,6 +899,11 @@ func opExp(c *context) error {
 var sha3Cache = newSha3HashCache(1<<16, 1<<18)
 
 func opSha3(c *context) error {
+	stackLimits := stackUsageToLimits(2, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	offset, size := c.stack.pop(), c.stack.peek()
 
 	data, err := c.memory.getSlice(offset, size, c)
@@ -587,42 +929,89 @@ func opSha3(c *context) error {
 	return nil
 }
 
-func opGas(c *context) {
+func opGas(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	c.stack.pushUndefined().SetUint64(uint64(c.gas))
+	return nil
 }
 
 // opPrevRandao / opDifficulty
-func opPrevRandao(c *context) {
+func opPrevRandao(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	prevRandao := c.params.PrevRandao
 	c.stack.pushUndefined().SetBytes32(prevRandao[:])
+	return nil
 }
 
-func opTimestamp(c *context) {
+func opTimestamp(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	time := c.params.Timestamp
 	c.stack.pushUndefined().SetUint64(uint64(time))
+	return nil
 }
 
-func opNumber(c *context) {
+func opNumber(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	number := c.params.BlockNumber
 	c.stack.pushUndefined().SetUint64(uint64(number))
+	return nil
 }
 
-func opCoinbase(c *context) {
+func opCoinbase(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	coinbase := c.params.Coinbase
 	c.stack.pushUndefined().SetBytes20(coinbase[:])
+	return nil
 }
 
-func opGasLimit(c *context) {
+func opGasLimit(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	limit := c.params.GasLimit
 	c.stack.pushUndefined().SetUint64(uint64(limit))
+	return nil
 }
 
-func opGasPrice(c *context) {
+func opGasPrice(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	price := c.params.GasPrice
 	c.stack.pushUndefined().SetBytes32(price[:])
+	return nil
 }
 
 func opBalance(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	slot := c.stack.peek()
 	address := tosca.Address(slot.Bytes20())
 	if c.isAtLeast(tosca.R09_Berlin) {
@@ -635,12 +1024,23 @@ func opBalance(c *context) error {
 	return nil
 }
 
-func opSelfbalance(c *context) {
+func opSelfbalance(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	balance := c.context.GetBalance(c.params.Recipient)
 	c.stack.pushUndefined().SetBytes32(balance[:])
+	return nil
 }
 
 func opBaseFee(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	if !c.isAtLeast(tosca.R10_London) {
 		return errInvalidRevision
 	}
@@ -650,6 +1050,11 @@ func opBaseFee(c *context) error {
 }
 
 func opBlobHash(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	if !c.isAtLeast(tosca.R13_Cancun) {
 		return errInvalidRevision
 	}
@@ -665,6 +1070,11 @@ func opBlobHash(c *context) error {
 }
 
 func opBlobBaseFee(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	if !c.isAtLeast(tosca.R13_Cancun) {
 		return errInvalidRevision
 	}
@@ -674,6 +1084,10 @@ func opBlobBaseFee(c *context) error {
 }
 
 func opSelfdestruct(c *context) (status, error) {
+	stackLimits := stackUsageToLimits(1, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return statusRunning, err
+	}
 
 	// SelfDestruct is a write instruction, it shall not be executed in static mode.
 	if c.params.Static {
@@ -723,19 +1137,30 @@ func selfDestructRefund(destructed bool, revision tosca.Revision) tosca.Gas {
 	return 0
 }
 
-func opChainId(c *context) {
+func opChainId(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	id := c.params.ChainID
 	c.stack.pushUndefined().SetBytes32(id[:])
+	return nil
 }
 
-func opBlockhash(c *context) {
+func opBlockhash(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	top := c.stack.peek()
 
 	requestedBlockNumber := top.Uint64()
 	currentBlockNumber := uint64(c.params.BlockNumber)
 	if !top.IsUint64() || requestedBlockNumber >= currentBlockNumber {
 		top.Clear()
-		return
+		return nil
 	}
 
 	oldestInHistory := uint64(256)
@@ -745,28 +1170,52 @@ func opBlockhash(c *context) {
 	oldestInHistory = currentBlockNumber - oldestInHistory
 	if requestedBlockNumber < oldestInHistory {
 		top.Clear()
-		return
+		return nil
 	}
 
 	hash := c.context.GetBlockHash(int64(requestedBlockNumber))
 	top.SetBytes(hash[:])
+	return nil
 }
 
-func opAddress(c *context) {
+func opAddress(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	c.stack.pushUndefined().SetBytes20(c.params.Recipient[:])
+	return nil
 }
 
-func opOrigin(c *context) {
+func opOrigin(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	origin := c.params.Origin
 	c.stack.pushUndefined().SetBytes20(origin[:])
+	return nil
 }
 
-func opCodeSize(c *context) {
+func opCodeSize(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	size := len(c.params.Code)
 	c.stack.pushUndefined().SetUint64(uint64(size))
+	return nil
 }
 
 func opExtcodesize(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	top := c.stack.peek()
 	address := tosca.Address(top.Bytes20())
 	if c.isAtLeast(tosca.R09_Berlin) {
@@ -779,6 +1228,11 @@ func opExtcodesize(c *context) error {
 }
 
 func opExtcodehash(c *context) error {
+	stackLimits := stackUsageToLimits(1, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	slot := c.stack.peek()
 	address := tosca.Address(slot.Bytes20())
 	if c.isAtLeast(tosca.R09_Berlin) {
@@ -797,6 +1251,15 @@ func opExtcodehash(c *context) error {
 }
 
 func genericCreate(c *context, kind tosca.CallKind) error {
+	var stackLimits stackLimits
+	if kind == tosca.Create2 {
+		stackLimits = stackUsageToLimits(4, 1)
+	} else {
+		stackLimits = stackUsageToLimits(3, 1)
+	}
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
 
 	// Create is a write instruction, it shall not be executed in static mode.
 	if c.params.Static {
@@ -931,6 +1394,10 @@ func getData(data []byte, offset *uint256.Int, size uint64) []byte {
 }
 
 func opExtCodeCopy(c *context) error {
+	stackLimits := stackUsageToLimits(4, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
 
 	address := c.stack.pop().Bytes20()
 
@@ -1091,6 +1558,11 @@ func genericCall(c *context, kind tosca.CallKind) error {
 }
 
 func opCall(c *context) error {
+	stackLimits := stackUsageToLimits(7, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	value := c.stack.peekN(2)
 	// In a static call, no value must be transferred.
 	if c.params.Static && !value.IsZero() {
@@ -1108,22 +1580,48 @@ func parseDelegationDesignation(code tosca.Code) (tosca.Address, bool) {
 }
 
 func opCallCode(c *context) error {
+	stackLimits := stackUsageToLimits(7, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	return genericCall(c, tosca.CallCode)
 }
 
 func opStaticCall(c *context) error {
+	stackLimits := stackUsageToLimits(6, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	return genericCall(c, tosca.StaticCall)
 }
 
 func opDelegateCall(c *context) error {
+	stackLimits := stackUsageToLimits(6, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	return genericCall(c, tosca.DelegateCall)
 }
 
-func opReturnDataSize(c *context) {
+func opReturnDataSize(c *context) error {
+	stackLimits := stackUsageToLimits(0, 1)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	c.stack.pushUndefined().SetUint64(uint64(len(c.returnData)))
+	return nil
 }
 
 func opReturnDataCopy(c *context) error {
+	stackLimits := stackUsageToLimits(3, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
+
 	var (
 		memOffset  = c.stack.pop()
 		dataOffset = c.stack.pop()
@@ -1151,6 +1649,10 @@ func opReturnDataCopy(c *context) error {
 }
 
 func opLog(c *context, n int) error {
+	stackLimits := stackUsageToLimits(n+2, 0)
+	if err := checkStackUsage(c.stack.len(), stackLimits); err != nil {
+		return err
+	}
 
 	// LogN op codes are write instructions, they shall not be executed in static mode.
 	if c.params.Static {

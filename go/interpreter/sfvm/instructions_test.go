@@ -99,12 +99,12 @@ func TestCreateChecksBalance(t *testing.T) {
 }
 
 func TestPush_ReadingDataLongerThanCodePushesZero(t *testing.T) {
-	nonSpecializedPush := make([]func(*context), 0, 27)
+	nonSpecializedPush := make([]func(*context) error, 0, 27)
 	for i := 5; i <= 31; i++ {
-		nonSpecializedPush = append(nonSpecializedPush, func(c *context) { opPush(c, i) })
+		nonSpecializedPush = append(nonSpecializedPush, func(c *context) error { return opPush(c, i) })
 	}
 
-	pushes := []func(c *context){opPush1, opPush2, opPush3, opPush4, opPush32}
+	pushes := []func(c *context) error{opPush1, opPush2, opPush3, opPush4, opPush32}
 	pushes = append(pushes, nonSpecializedPush...)
 	for _, op := range pushes {
 		ctxt := context{
@@ -1525,7 +1525,7 @@ func TestInstructions_ComparisonAndShiftOperations(t *testing.T) {
 	u257 := *uint256.NewInt(257)
 
 	tests := map[string]struct {
-		opImplementation func(*context)
+		opImplementation func(*context) error
 		stackInputs      *stack
 		expectedOutput   uint256.Int
 	}{
